@@ -4,6 +4,15 @@ import bcrypt from "bcryptjs"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
+// Simple UUID generator function
+function generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0
+        const v = c === 'x' ? r : (r & 0x3 | 0x8)
+        return v.toString(16)
+    })
+}
+
 export default function LoginPage() {
 
     useEffect(() => {
@@ -33,7 +42,7 @@ export default function LoginPage() {
 
         const isMatch = await bcrypt.compare(password, user.password)
 
-        const sessionId = crypto.randomUUID()
+        const sessionId = generateUUID()
 
         if (user.username === username && isMatch) {
             localStorage.setItem("session", JSON.stringify({

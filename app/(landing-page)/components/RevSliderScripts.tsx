@@ -41,6 +41,9 @@ export default function RevSliderScripts() {
                 dangerouslySetInnerHTML={{
                                 __html: `
                 jQuery(document).ready(function() {
+                    // Show the slider container
+                    jQuery('#rev_slider_14_1').css('display', 'block');
+                    
                     if (typeof dz_rev_slider_1 === "function") {
                     dz_rev_slider_1();
                     }
