@@ -19,7 +19,7 @@ export default function Header() {
 
     let pageTitle = "Dashboard";
 
-    for (const path in titles) {
+    for (const path of Object.keys(titles) as Array<keyof typeof titles>) {
         if (pathname.startsWith(path)) {
             pageTitle = titles[path];
         }
