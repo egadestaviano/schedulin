@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 
 // Simple UUID generator function
 function generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0
         const v = c === 'x' ? r : (r & 0x3 | 0x8)
         return v.toString(16)
@@ -25,8 +25,8 @@ export default function LoginPage() {
         }
     }, [])
 
-    const [username, setUsername] = useState("")
-    const [password, setPassword] = useState("")
+    const [username, setUsername] = useState("admin")
+    const [password, setPassword] = useState("password")
     const [showPassword, setShowPassword] = useState(false)
 
     const handleLogin = async (e: React.FormEvent) => {
