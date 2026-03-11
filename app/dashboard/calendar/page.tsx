@@ -13,6 +13,7 @@ export default function page() {
     const [activeTitle, setActiveTitle] = useState<string | null>(null)
     const [isHovering, setIsHovering] = useState(false)
     const [templateEvents, setTemplateEvents] = useState<any[]>([])
+    const [currentView, setCurrentView] = useState("dayGridMonth")
 
     const [events, setEvents] = useState<any[]>([])
 
@@ -42,12 +43,17 @@ export default function page() {
             }
 
             calendarRef.current = new FullCalendar.Calendar(calendarEl, {
-                initialView: "dayGridMonth",
+                initialView: currentView,
                 headerToolbar: {
                     left: "prev,next today",
                     center: "title",
                     right: "dayGridMonth,timeGridWeek,timeGridDay",
                 },
+
+                datesSet: function (info: any) {
+                    setCurrentView(info.view.type)
+                },
+
                 editable: true,
                 droppable: true,
                 selectable: true,
@@ -75,6 +81,8 @@ export default function page() {
                 })),
 
                 eventReceive: function (info: any) {
+
+                    info.event.remove()
 
                     const newEvent = {
                         id: "CE-" + String(Date.now()).slice(-9),
@@ -106,7 +114,8 @@ export default function page() {
 
                 eventClick: function (info: any) {
                     setDeleteId(info.event.id)
-                    const modalEl = document.getElementById("deleteModal");
+                    handleEditClick(info.event.id)
+                    const modalEl = document.getElementById("editModal");
                     const modalInstance = bootstrap.Modal.getInstance(modalEl!) || new bootstrap.Modal(modalEl!);
                     modalInstance.show();
                 },
@@ -128,6 +137,8 @@ export default function page() {
             }
         }
     }, [events])
+
+    console.log("curent view:", currentView)
 
     useEffect(() => {
         function initSelect() {
@@ -182,6 +193,7 @@ export default function page() {
         return () => clearTimeout(timer)
     }, [activeTitle, isHovering])
 
+
     // add template
     const [title, setTitle] = useState("")
     const [category, setCategory] = useState("")
@@ -214,11 +226,11 @@ export default function page() {
     // edit
     const [editTemplateEvent, setEditTemplateEvent] = useState<any>(null);
 
-    const handleEditTemplateClick = (title: string) => {
+    const handleEditTemplateClick = (ids: string) => {
         const modalEl = document.getElementById("editTemplateModal");
         const modalInstance = bootstrap.Modal.getInstance(modalEl!) || new bootstrap.Modal(modalEl!);
         modalInstance.show();
-        const template = templateEvents.find(p => p.title === title);
+        const template = templateEvents.find(p => p.ids === ids);
         if (template) {
             setEditTemplateEvent(template);
             setTitle(template.title);
@@ -237,7 +249,7 @@ export default function page() {
             updatedAt: new Date().toISOString()
         };
 
-        const updatedTemplates = templateEvents.map(e => e.id === editTemplateEvent.id ? updatedTemplate : e);
+        const updatedTemplates = templateEvents.map(e => e.ids === editTemplateEvent.ids ? updatedTemplate : e);
         setTemplateEvents(updatedTemplates);
         localStorage.setItem("templateEvents", JSON.stringify(updatedTemplates));
 
@@ -253,6 +265,7 @@ export default function page() {
             modalInstance.hide();
         }
     }
+
 
     // delete tempalte
     const [deleteTitle, setDeleteTitle] = useState("")
@@ -299,6 +312,59 @@ export default function page() {
         }
     }
 
+    // edit
+    const [editEvent, setEditEvent] = useState<any>(null);
+
+    const handleEditClick = (id: string) => {
+        const event = events.find(p => p.id === id);
+
+        if (event) {
+            setEditEvent(event);
+            setEventName(event.eventName);
+            setEventCategory(event.eventCategory);
+        }
+
+        const modalEl = document.getElementById("editModal");
+        const modalInstance =
+            bootstrap.Modal.getInstance(modalEl!) || new bootstrap.Modal(modalEl!);
+        modalInstance.show();
+
+        setTimeout(() => {
+            const $ = (window as any).jQuery
+            if ($?.fn?.selectpicker) {
+                $(".default-select").selectpicker("refresh")
+            }
+        }, 50)
+    };
+
+    function handleSaveEditEvent(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editEvent) return;
+
+        const updatedEvent = {
+            ...editEvent,
+            eventName,
+            eventCategory,
+            updatedAt: new Date().toISOString()
+        }
+
+        const updatedEvents = events.map(e => e.id === editEvent.id ? updatedEvent : e);
+        setEvents(updatedEvents);
+        localStorage.setItem("events", JSON.stringify(updatedEvents));
+
+        setEditEvent(null);
+        setEventName("");
+        setEventCategory("");
+        setSelectedDate("");
+        setSelectedEndDate("");
+
+        const modalEl = document.getElementById("editModal");
+        if (modalEl && typeof bootstrap !== "undefined") {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalInstance.hide();
+        }
+    }
+
     // delete
     const handleDeleteEvent = (id: string) => {
         const updated = events.filter(e => e.id !== id);
@@ -340,7 +406,7 @@ export default function page() {
                                                             <button
                                                                 className="dropdown-item"
                                                                 onClick={() => {
-                                                                    handleEditTemplateClick(event.title)
+                                                                    handleEditTemplateClick(event.ids)
                                                                     setActiveTitle(null)
                                                                 }}
                                                             >
@@ -418,13 +484,78 @@ export default function page() {
 
                                     </div>
                                     <div className="modal-footer">
-                                        <button type="button" className="btn btn-danger waves-effect" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" className="btn btn-danger waves-effect" data-bs-dismiss="modal" onClick={() => {
+                                            setEventName(""), setEventCategory("")
+                                        }}>
+                                            Close
+                                        </button>
                                         <button type="submit" className="btn btn-success waves-effect waves-light save-category" data-bs-toggle="modal">Save</button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
+
+                    {/* modal edit */}
+                    <div className="modal fade" id="editModal" tabIndex={-1} aria-labelledby="editModalLabel" aria-hidden="true">
+                        <div className="modal-dialog">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h1 className="modal-title fs-5" id="editModalLabel">Edit Event</h1>
+                                    <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form onSubmit={handleSaveEditEvent}>
+                                    <div className="modal-body">
+                                        <div className="row">
+                                            <div className="col-md-6">
+                                                <label className="control-label form-label">Event Name</label>
+                                                <input value={eventName} onChange={(e) => setEventName(e.target.value)} className="form-control form-white" placeholder="Enter name" type="text" name="category-name" />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="control-label form-label">Choose event Color</label>
+                                                <select
+                                                    value={eventCategory}
+                                                    onChange={(e) => setEventCategory(e.target.value)}
+                                                    className="nice-select form-control default-select wide"
+                                                >
+                                                    <option value="success">Success</option>
+                                                    <option value="danger">Danger</option>
+                                                    <option value="info">Info</option>
+                                                    <option value="pink">Pink</option>
+                                                    <option value="primary">Primary</option>
+                                                    <option value="warning">Warning</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div className="modal-footer d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-danger"
+                                            onClick={() => {
+                                                const modalEl = document.getElementById("editModal");
+                                                const modalInstance =
+                                                    bootstrap.Modal.getInstance(modalEl!) || new bootstrap.Modal(modalEl!);
+                                                modalInstance.hide();
+
+                                                const modalDel = document.getElementById("deleteModal");
+                                                const modalDelIn =
+                                                    bootstrap.Modal.getInstance(modalDel!) || new bootstrap.Modal(modalDel!);
+                                                modalDelIn.show();
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                        <div className="d-flex gap-2">
+                                            <button type="button" className="btn btn-danger waves-effect" data-bs-dismiss="modal">Close</button>
+                                            <button type="submit" className="btn btn-success waves-effect waves-light save-category" data-bs-toggle="modal">Save</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div >
 
                     {/* modal delete */}
                     <div className="modal fade" id="deleteModal" tabIndex={-1} aria-hidden="true">
@@ -484,7 +615,7 @@ export default function page() {
 
                                     </div>
                                     <div className="modal-footer">
-                                        <button type="button" className="btn btn-danger waves-effect" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" className="btn btn-danger waves-effect" data-bs-dismiss="modal" onClick={() => { setTitle(""), setCategory("") }}>Close</button>
                                         <button type="submit" className="btn btn-success waves-effect waves-light save-category" data-bs-toggle="modal">Save</button>
                                     </div>
                                 </form>
@@ -492,7 +623,7 @@ export default function page() {
                         </div>
                     </div>
 
-                    {/* modal edit */}
+                    {/* modal edit template */}
                     <div className="modal fade" id="editTemplateModal" tabIndex={-1} aria-labelledby="editModalLabel" aria-hidden="true">
                         <div className="modal-dialog">
                             <div className="modal-content">
@@ -509,6 +640,7 @@ export default function page() {
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="control-label form-label">Choose event Color</label>
+
                                                 <select value={category}
                                                     onChange={(e) => setCategory(e.target.value)} className="nice-select form-control default-select wide" data-placeholder="Choose a color..." name="category-color">
                                                     <option value="success">Success</option>
